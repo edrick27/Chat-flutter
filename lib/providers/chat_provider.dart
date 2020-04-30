@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+
+
+import 'package:socket_io/models/Message_model.dart';
 import 'package:socket_io/utils/socket_client.dart';
+
 
 class ChatProvider with ChangeNotifier {
 
-  List<dynamic> _mensageList = [];
+  List<Message> _mensageList = List();
 
   ChatProvider() {
     _loadMesages();
@@ -14,19 +18,16 @@ class ChatProvider with ChangeNotifier {
     this.mensageList = await socketClient.fetchChatHistory();
   }
 
-  set addMessage(dynamic msg){
-
+  set addMessage(Message msg){
     _mensageList.insert(0, msg);
     notifyListeners();
   }
 
-  set mensageList(List<dynamic> list){
-
+  set mensageList(List<Message> list){
     _mensageList = list;
     notifyListeners();
   }
 
-  List<dynamic> get mensageList => _mensageList;
-  
+  List<Message> get mensageList => _mensageList;
   
 }

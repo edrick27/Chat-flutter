@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 
 import 'package:socket_io/app_config.dart';
+import 'package:socket_io/models/Message_model.dart';
 import 'package:socket_io/utils/events_enum.dart';
 import 'package:socket_io/models/ChatRoom_model.dart';
 import 'package:socket_io/models/ChatUser_model.dart';
@@ -15,9 +16,8 @@ typedef void OnNewMessage(dynamic data);
 class SocketClient with ChangeNotifier {
 
   SocketIO _socket;
-  OnNewMessage onNewMessage;
   final _manager = SocketIOManager();
-  List<dynamic> _mensageList = [];
+  OnNewMessage onNewMessage;
   Room _room;
   ChatUser _chatUser;
   String _token;
@@ -154,16 +154,18 @@ class SocketClient with ChangeNotifier {
     print('response.body');
     print(jsonDecode(response.body));
 
-    List jsonResponse = jsonDecode(response.body);
+    List list = jsonDecode(response.body);
+    List<Message> messages = list.map((model)=> Message.fromJson(model)).toList();
     
 
-    return jsonResponse;
+    return messages;
   }
 
   void setChatUser() {
 
     _chatUser = new ChatUser(
-      uuid: '09a13a76-0776-431d-ac27-1f6ed3a6c269',
+      // uuid: '09a13a76-0776-431d-ac27-1f6ed3a6c269',//EL
+      uuid: 'c5616439-1615-430e-89e1-c667e39fe28e',//YM
       serverId: 1,
       organizationId: "121212",
       accessToken: "0d7da00c5d1591f2fc287653cc5003eb"

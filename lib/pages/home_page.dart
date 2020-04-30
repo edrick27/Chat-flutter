@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:socket_io/models/Message_model.dart';
 import 'package:socket_io/utils/socket_client.dart';
 import 'package:socket_io/providers/chat_provider.dart';
 
@@ -27,18 +29,19 @@ class _HomePageState extends State<HomePage> {
     _socketProvider = Provider.of<ChatProvider>(context);
     
     return  Scaffold(
+      backgroundColor: Color(0xFF121212),
       body: Column(
         children: <Widget>[
           Expanded(child: _ListMessage()),
           _MessageComposer()
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.check),
-        onPressed: () {
-          socketClient.connect();
-        }
-      )
+      // floatingActionButton: FloatingActionButton(
+      //   child: Icon(Icons.check),
+      //   onPressed: () {
+      //     socketClient.connect();
+      //   }
+      // )
     );
   }
 
@@ -46,51 +49,66 @@ class _HomePageState extends State<HomePage> {
     
     socketClient = new SocketClient();
     socketClient.setChatUser();
-
-    socketClient.onNewMessage = (data) {
-      print('onNewMessage');
-      print(data);
-      _socketProvider.addMessage = data;
-    };
   }
 }
 
 class _MessageComposer extends StatelessWidget {
 
-  String _mensaje;
   SocketClient socketClient = new SocketClient();
+  final TextEditingController _controller = new TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      padding: EdgeInsets.symmetric(horizontal: 5.0, vertical: 8.0),
+      color: Color(0xFF1F1F1F),
+      child: Row(
         children: <Widget>[
-          TextField(
-            decoration: InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: 'Mensaje',
+          SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              maxLines: null,
+              controller: _controller,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                hintText: 'Mensaje a enviar....',
+                hintStyle: TextStyle(
+                  color: Colors.white54
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: const BorderRadius.all(
+                    const Radius.circular(25.0),
+                  ),
+                ),
+                filled: true,
+                fillColor: Color(0xFF121c25),
+              ),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18.0
+              ),
             ),
-            onChanged: (value){
-              _mensaje = value;
-            }
           ),
-          SizedBox(height: 10),
-          RaisedButton(
-            child: Text('Enviar'),
-            onPressed: sendMsg
-          )
+          IconButton(
+            icon: Icon(Icons.send),
+            iconSize: 25.0,
+            color: Theme.of(context).primaryColor,
+            onPressed: sendMsg,
+          ),
         ],
       ),
     );
   }
 
   void sendMsg() {
+    String _mensaje = _controller.text;
+
     print('mensaje mensaje');
     print(_mensaje);
-    if(_mensaje != null && _mensaje.isNotEmpty) socketClient.sendTextMessage(_mensaje);
+    if(_mensaje.isNotEmpty) socketClient.sendTextMessage(_mensaje);
+    
+    _controller.clear();
   }
 }
 
@@ -98,6 +116,7 @@ class _ListMessage extends StatelessWidget {
   
   final ScrollController _scrollController = new ScrollController();
   ChatProvider _socketProvider;
+  String currentUserid = '09a13a76-0776-431d-ac27-1f6ed3a6c269';
   
   _ListMessage();
 
@@ -108,9 +127,11 @@ class _ListMessage extends StatelessWidget {
     SocketClient socketClient = new SocketClient();
 
     socketClient.onNewMessage = (data) {
-      print('onNewMessage');
+      print('onNewMessage 44');
       print(data);
-      _socketProvider.addMessage = data;
+
+      Message msg = Message.fromJson(data);
+      _socketProvider.addMessage = msg;
       _scrollToBottom();
     };
 
@@ -119,51 +140,93 @@ class _ListMessage extends StatelessWidget {
     );
   }
 
-   Widget _buildChatListView() {
+  Widget _buildChatListView() {
+
+    if (_socketProvider.mensageList == null) {
+      
+      return CircularProgressIndicator();
+    } 
 
     return ListView.builder(
       reverse: true,
       controller: _scrollController,
-      padding: EdgeInsets.only(top: 15.0),
+      padding: EdgeInsets.symmetric(vertical: 30.0),
       itemCount: _socketProvider.mensageList.length,
       itemBuilder: (BuildContext context, int i) {
 
-        final note = _socketProvider.mensageList[i];
+        final Message msg = _socketProvider.mensageList[i];
+        final bool isMe = msg.user.id == currentUserid;
         // print('note');
         // print(note);
 
-        return _builNote(note['text'], context);
+        return _builNote(msg, isMe, context);
       },
     );
 
     
   }
 
-  Widget _builNote(String note, BuildContext context) {
+  Widget _builNote(Message msg, bool isMe, BuildContext context) {
 
 
-    final Container msg = Container(
-      margin: EdgeInsets.only(top: 10, left: 15, right: 15),
-      padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+    final Container container = Container(
+       margin: isMe
+          ? EdgeInsets.only(
+              top: 12.0,
+              right: 8.0,
+              left: 70.0
+            )
+          : EdgeInsets.only(
+              top: 12.0,
+              right: 70.0,
+              left: 8.0
+            ),
+      padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       decoration: BoxDecoration(
-        color: Color(0xFF00B3B5),
-        borderRadius: BorderRadius.all(
-          Radius.circular(10.0)
+        color: isMe ? Color(0xFF3b6d99) : Color(0xFF222f3f),
+        borderRadius: BorderRadius.only(
+          topRight: isMe ? Radius.circular(0.0) : Radius.circular(20.0),
+          topLeft: isMe ? Radius.circular(20.0) : Radius.circular(0.0),
+          bottomLeft: Radius.circular(20.0),
+          bottomRight: Radius.circular(20.0),
         )
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          SizedBox(height: 10.0),
-          Text(note),
-          SizedBox(height: 10.0),
+          _avaterUser(msg.user),
+          SizedBox(height: 7.0),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 15.0),
+            child: Text(
+              msg.text,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18.0,
+              ),
+            ),
+          ),
+          SizedBox(height: 3.0),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: <Widget>[
+              Text(
+                formatDate(msg.createdAt),
+                style: TextStyle(
+                  color: Colors.white30,
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          )
         ],
       ),
     );
 
     return Stack(
       children: <Widget>[
-        msg,
+        container,
       ],
     ); 
 
@@ -180,4 +243,47 @@ class _ListMessage extends StatelessWidget {
     );
   }
 
+  String formatDate(String date){
+
+    final parsedDate =  DateTime.parse(date) ;
+
+    final formatter = new DateFormat('d MMMM - h:mm');
+    String formatted = formatter.format(parsedDate);
+
+    return formatted;
+  }
+
+  Widget _avaterUser(User user) {
+
+    List<String> name = user.name.split(' ');
+    String avatar = name[0][0].toUpperCase() + name[1][0].toUpperCase();
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: <Widget>[
+        CircleAvatar(
+          backgroundColor: Colors.indigo[600],
+          radius: 16,
+          child: ClipOval(
+            child: Text(
+              avatar,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            )
+          ),
+        ),
+        SizedBox(width: 3.0),
+        Text(
+          user.name,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 15.0,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
 }
