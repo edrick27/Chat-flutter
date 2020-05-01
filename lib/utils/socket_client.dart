@@ -52,7 +52,7 @@ class SocketClient with ChangeNotifier {
       print('connected 33');
       print(data.toString());
 
-      joinRoom(_room.roomId);
+      joinRoom(_room.id);
 
       _setupHearEvents();
     });
@@ -101,7 +101,7 @@ class SocketClient with ChangeNotifier {
     final message = {
       'user': { 'userId': _room.userId },
       'text': txtMsg,
-      'roomId': _room.roomId
+      'roomId': _room.id
     };
 
     print('ON emit CHAT');
@@ -115,9 +115,9 @@ class SocketClient with ChangeNotifier {
   void joinRoom(String roomUUID) {
     if (_room != null) this.exitRoom();
 
-    _room = new Room(roomId: roomUUID, userId: _chatUser.uuid);
+    _room = new Room(id: roomUUID, userId: _chatUser.uuid);
 
-    _socket.emit(Event.ON_ROOM, [{ 'roomId': _room.roomId, 'userId': _room.userId }]);
+    _socket.emit(Event.ON_ROOM, [{ 'roomId': _room.id, 'userId': _room.userId }]);
 
     return null;
   }
@@ -127,28 +127,31 @@ class SocketClient with ChangeNotifier {
 
     _socket.emit(Event.ON_EXIT_ROOM,[]);
     _room = null;
-    // this.onMessageArrivesCallback = null;
   }
 
-  Future<List<String>> getChatRoomsFromServer() async {
+  Future<List<Room>> getChatRoomsFromServer() async {
 
-    final url = "${AppConfig.socketHost}chatroomsgetall";
+    final url = "${AppConfig.socketHost}rooms/chatroomsgetall/${_chatUser.organizationId}";
     var response = await http.get(url);
 
-    List<String> jsonResponse = jsonDecode(response.body);
+    print('response');
+    print(response);
 
-    return jsonResponse;
+    List jsonResponse = jsonDecode(response.body);
+    List<Room> listRooms = jsonResponse.map((model)=> Room.fromJson(model)).toList();
+
+    return listRooms;
   }
 
   Future<List> fetchChatHistory() async {
     
     print('fetchChatHistory AppConfig.socketHost');
     print(AppConfig.socketHost);
-    print(_room.roomId);
+    print(_room.id);
 
     if(_room == null) return [];
       
-    final url = "${AppConfig.socketHost}rooms/messages/${_room.roomId}/1/100";
+    final url = "${AppConfig.socketHost}rooms/messages/${_room.id}/1/100";
     var response = await http.get(url);
     
     print('response.body');
@@ -161,6 +164,18 @@ class SocketClient with ChangeNotifier {
     return messages;
   }
 
+  void setChatRoom(String idRoom) { 
+
+    _room = new Room(
+      // id: '4fdd3dc2-a594-474b-9f08-88fe5e7d0b42',
+      id: idRoom,
+      userId: '09a13a76-0776-431d-ac27-1f6ed3a6c269'
+    );
+
+    print('setChatUser');
+    print(idRoom);
+  }
+
   void setChatUser() {
 
     _chatUser = new ChatUser(
@@ -171,16 +186,9 @@ class SocketClient with ChangeNotifier {
       accessToken: "0d7da00c5d1591f2fc287653cc5003eb"
     );
 
-    _room = new Room(
-      roomId: '4fdd3dc2-a594-474b-9f08-88fe5e7d0b42',
-      userId: '09a13a76-0776-431d-ac27-1f6ed3a6c269'
-    );
-
     _token = _chatUser.accessToken;
 
     print('setChatUser');
-
-    this.connect();
   }
 
 
@@ -189,7 +197,7 @@ class SocketClient with ChangeNotifier {
 
     _manager.clearInstance(_socket);
     _room = null;
-    _chatUser = null;
+    // _chatUser = null;
   }
 
 }

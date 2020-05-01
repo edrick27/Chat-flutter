@@ -1,35 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
+
 import 'package:socket_io/models/Message_model.dart';
 import 'package:socket_io/utils/socket_client.dart';
 import 'package:socket_io/providers/chat_provider.dart';
 
 
-class HomePage extends StatefulWidget {
+class ChatPage extends StatelessWidget {
 
   @override
-  _HomePageState createState() => _HomePageState();
+  Widget build(BuildContext context) {
+    
+    return  ChangeNotifierProvider(
+      create: (_) => ChatProvider(),
+      child: _ChatBody(),
+    );
+  }
 }
 
-class _HomePageState extends State<HomePage> {
 
-  SocketClient socketClient;
+class _ChatBody extends StatefulWidget {
+
+  @override
+  __ChatBodyState createState() => __ChatBodyState();
+}
+
+class __ChatBodyState extends State<_ChatBody> {
+
+  SocketClient socketClient = new SocketClient();
   ChatProvider _socketProvider;
 
-    @override
+  @override
   void initState() {
-    _connectSocket();
+    socketClient.connect();
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    
+
     _socketProvider = Provider.of<ChatProvider>(context);
-    
-    return  Scaffold(
-      backgroundColor: Color(0xFF121212),
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Room'),
+      ),
       body: Column(
         children: <Widget>[
           Expanded(child: _ListMessage()),
@@ -45,10 +62,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _connectSocket() async {
-    
-    socketClient = new SocketClient();
-    socketClient.setChatUser();
+  @override
+  void dispose() {
+    socketClient.disconnect();
+    super.dispose();
   }
 }
 
@@ -90,11 +107,17 @@ class _MessageComposer extends StatelessWidget {
               ),
             ),
           ),
-          IconButton(
-            icon: Icon(Icons.send),
-            iconSize: 25.0,
-            color: Theme.of(context).primaryColor,
+          MaterialButton(
+            child: Icon(
+              Icons.send,
+              size: 25.0,
+              color: Theme.of(context).iconTheme.color,
+            ),
             onPressed: sendMsg,
+            elevation: 2.0,
+            padding: EdgeInsets.all(15.0),
+            shape: CircleBorder(),
+            minWidth: 15.0,
           ),
         ],
       ),
