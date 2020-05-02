@@ -1,11 +1,22 @@
+import 'dart:convert';
+import 'dart:io' as io;
+import 'dart:typed_data';
+
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:file/file.dart';
+import 'package:file/local.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' ;
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter_audio_recorder/flutter_audio_recorder.dart';
 
 
 import 'package:socket_io/models/Message_model.dart';
 import 'package:socket_io/utils/socket_client.dart';
 import 'package:socket_io/providers/chat_provider.dart';
+
 
 
 class ChatPage extends StatelessWidget {
@@ -31,10 +42,14 @@ class __ChatBodyState extends State<_ChatBody> {
 
   SocketClient socketClient = new SocketClient();
   ChatProvider _socketProvider;
+  FlutterAudioRecorder _recorder;
+  var _recording;
+  bool _isRecording = false;
 
   @override
   void initState() {
-    socketClient.connect();
+    // socketClient.connect();
+    _initRecordAudio();
     super.initState();
   }
 
@@ -53,13 +68,89 @@ class __ChatBodyState extends State<_ChatBody> {
           _MessageComposer()
         ],
       ),
-      // floatingActionButton: FloatingActionButton(
-      //   child: Icon(Icons.check),
-      //   onPressed: () {
-      //     socketClient.connect();
-      //   }
-      // )
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.mic),
+        onPressed: () {
+          if (_isRecording) {
+            _stopRecordAudio();
+          } else {
+            _startRecordAudio();
+          }
+        }
+      )
     );
+  }
+
+  void _initRecordAudio() async {
+    String customPath = '/audio_recorder_';
+    if (await FlutterAudioRecorder.hasPermissions) {
+      io.Directory appDocDirectory;
+      
+      if (io.Platform.isIOS) {
+        appDocDirectory = await getApplicationDocumentsDirectory();
+      } else {
+        appDocDirectory = await getExternalStorageDirectory();
+      }
+
+      customPath =  appDocDirectory.path +
+                    customPath +
+                    DateTime.now().millisecondsSinceEpoch.toString();
+
+      _recorder = FlutterAudioRecorder(customPath, audioFormat: AudioFormat.WAV); // .wav .aac .m4a
+      await _recorder.initialized;
+    }
+  }
+
+  void _startRecordAudio() async {
+
+    _isRecording = true;
+    await _recorder.start();
+    // _recording = await _recorder.current(channel: 0);
+  }
+
+  void _stopRecordAudio() async {
+
+    _isRecording = false;
+    var  result = await _recorder.stop();
+    print("Stop recording: ${result.path}");
+    print("Stop recording: ${result.duration}");
+    LocalFileSystem localFileSystem = LocalFileSystem();
+    File file = localFileSystem.file(result.path);
+    List<int> fileBytes = file.readAsBytesSync();
+    print('fileBytes');
+    print(fileBytes);
+    String base64Image = base64Encode(fileBytes);
+    print('base64Image');
+    print(base64Image.length);
+    print(base64Image);
+
+   final fromString=  await _createFileFromString(base64Image);
+   print('fromString');
+   print(fromString);
+  }
+
+  Future<String> _createFileFromString(String encodedStr) async {
+
+    Uint8List bytes = base64.decode(encodedStr);
+
+    String customPath = '/base64_';
+    io.Directory appDocDirectory;
+      
+      if (io.Platform.isIOS) {
+        appDocDirectory = await getApplicationDocumentsDirectory();
+      } else {
+        appDocDirectory = await getExternalStorageDirectory();
+      }
+
+      customPath =  appDocDirectory.path +
+                    customPath +
+                    DateTime.now().millisecondsSinceEpoch.toString();
+
+    File file =  LocalFileSystem().file("$customPath.wav");
+    
+    await file.writeAsBytes(bytes);
+
+    return file.path;
   }
 
   @override
