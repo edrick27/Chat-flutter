@@ -17,7 +17,14 @@ class ListRoomPage extends StatelessWidget {
       ),
       body: Container(
         child: _ListViewRooms(),
-      )
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(
+          Icons.chat,
+          color: Colors.white
+        ),
+        onPressed: () => Navigator.pushNamed(context, 'listUsers')
+      ),
    );
   }
 }
@@ -46,16 +53,19 @@ class _ListViewRooms extends StatelessWidget {
               Room room = listRooms[i];
               
               return InkWell(
-                child: ListTile(
-                  leading: _avaterUser(room.name),
-                  title: Text(
-                    room.name
+                child: Container(
+                  padding: EdgeInsets.all(20),
+                  child: ListTile(
+                    leading: _avaterUser(room.name),
+                    title: Text(
+                      room.name
+                    ),
                   ),
-                  onTap: (){
-                    socketClient.setChatRoom(room.id);
-                    Navigator.pushNamed(context, 'chatRoom');
-                  },
                 ),
+                onTap: (){
+                  socketClient.setChatRoom(room.id);
+                  Navigator.pushNamed(context, 'chatRoom');
+                },
               );
             },
           );
@@ -75,12 +85,12 @@ class _ListViewRooms extends StatelessWidget {
     
     return CircleAvatar(
       backgroundColor: Colors.indigo[600],
-      radius: 20,
+      radius: 25,
       child: ClipOval(
         child: Text(
           avatar,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 20,
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),

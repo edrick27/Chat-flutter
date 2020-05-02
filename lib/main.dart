@@ -41,6 +41,9 @@ class _MyAppState extends State<MyApp> {
         ),
         appBarTheme: AppBarTheme(
           color: Color(0xFF202e3d),
+        ),
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
+          backgroundColor: Color(0xFF41a8e7)
         )
       ),
     );

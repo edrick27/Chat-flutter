@@ -5,29 +5,35 @@ ChatUser chatUserFromJson(String str) => ChatUser.fromJson(json.decode(str));
 String chatUserToJson(ChatUser data) => json.encode(data.toJson());
 
 class ChatUser {
-    String uuid;
-    int serverId;
+    String id;
+    String name;
+    String serverId;
     String organizationId;
-    String accessToken;
+    String createdAt;
+    bool selected;
 
     ChatUser({
-        this.uuid,
+        this.id,
+        this.name,
         this.serverId,
         this.organizationId,
-        this.accessToken,
+        this.createdAt,
+        this.selected = false,
     });
 
     factory ChatUser.fromJson(Map<String, dynamic> json) => ChatUser(
-        uuid: json["uuid"],
-        serverId: json["serverId"],
-        organizationId: json["organizationId"],
-        accessToken: json["access_token"],
+        id: json["id"],
+        name: json["name"],
+        serverId: json["dd_user_id"],
+        organizationId: json["organization_id"],
+        createdAt: json["created_at"]
     );
 
     Map<String, dynamic> toJson() => {
-        "uuid": uuid,
-        "serverId": serverId,
-        "organizationId": organizationId,
-        "access_token": accessToken,
+        "id": id,
+        "name": name,
+        "dd_user_id": serverId,
+        "organization_id": organizationId,
+        "created_at": createdAt
     };
 }

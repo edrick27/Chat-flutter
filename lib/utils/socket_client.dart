@@ -115,7 +115,7 @@ class SocketClient with ChangeNotifier {
   void joinRoom(String roomUUID) {
     if (_room != null) this.exitRoom();
 
-    _room = new Room(id: roomUUID, userId: _chatUser.uuid);
+    _room = new Room(id: roomUUID, userId: _chatUser.id);
 
     _socket.emit(Event.ON_ROOM, [{ 'roomId': _room.id, 'userId': _room.userId }]);
 
@@ -141,6 +141,45 @@ class SocketClient with ChangeNotifier {
     List<Room> listRooms = jsonResponse.map((model)=> Room.fromJson(model)).toList();
 
     return listRooms;
+  }
+
+  Future<List<ChatUser>> getChatUsersFromServer() async {
+
+
+print('getChatUsersFromServer');
+
+    final url = "${AppConfig.socketHost}users/usersgetall/${_chatUser.organizationId}";
+    print('url');
+    print(url);
+    var response = await http.get(url);
+
+    print('response');
+    print(response);
+
+    List jsonResponse = jsonDecode(response.body);
+      print('jsonResponse');
+    print(jsonResponse);
+    List<ChatUser> listUsers = jsonResponse.map((model) {
+        print('model');
+    print(model["id"]);
+    print(model["name"]);
+    print(model["dd_user_id"]);
+    print(model["organization_id"]);
+    print(model["created_at"]);
+
+      final chatUser = ChatUser.fromJson(model);
+
+         print('chatUser');
+    print(chatUser);
+
+      return chatUser;
+
+    }).toList();
+
+    print('listUsers');
+    print(listUsers);
+
+    return listUsers;
   }
 
   Future<List> fetchChatHistory() async {
@@ -179,14 +218,13 @@ class SocketClient with ChangeNotifier {
   void setChatUser() {
 
     _chatUser = new ChatUser(
-      // uuid: '09a13a76-0776-431d-ac27-1f6ed3a6c269',//EL
-      uuid: 'c5616439-1615-430e-89e1-c667e39fe28e',//YM
-      serverId: 1,
+      // id: '09a13a76-0776-431d-ac27-1f6ed3a6c269',//EL
+      id: 'c5616439-1615-430e-89e1-c667e39fe28e',//YM
+      serverId: '1',
       organizationId: "121212",
-      accessToken: "0d7da00c5d1591f2fc287653cc5003eb"
     );
 
-    _token = _chatUser.accessToken;
+    _token = "0d7da00c5d1591f2fc287653cc5003eb";
 
     print('setChatUser');
   }
