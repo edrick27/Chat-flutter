@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:typed_data';
 
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file/file.dart';
@@ -14,6 +16,7 @@ import 'package:flutter_audio_recorder/flutter_audio_recorder.dart';
 
 
 import 'package:socket_io/models/Message_model.dart';
+import 'package:socket_io/utils/message_type_enum.dart';
 import 'package:socket_io/utils/socket_client.dart';
 import 'package:socket_io/providers/chat_provider.dart';
 
@@ -42,14 +45,10 @@ class __ChatBodyState extends State<_ChatBody> {
 
   SocketClient socketClient = new SocketClient();
   ChatProvider _socketProvider;
-  FlutterAudioRecorder _recorder;
-  var _recording;
-  bool _isRecording = false;
-
+  
   @override
   void initState() {
-    // socketClient.connect();
-    _initRecordAudio();
+    socketClient.connect();
     super.initState();
   }
 
@@ -68,21 +67,173 @@ class __ChatBodyState extends State<_ChatBody> {
           _MessageComposer()
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.mic),
-        onPressed: () {
-          if (_isRecording) {
-            _stopRecordAudio();
-          } else {
-            _startRecordAudio();
-          }
-        }
-      )
     );
   }
 
+  @override
+  void dispose() {
+    socketClient.disconnect();
+    super.dispose();
+  }
+}
+
+class _MessageComposer extends StatefulWidget {
+
+  @override
+  __MessageComposerState createState() => __MessageComposerState();
+}
+
+class __MessageComposerState extends State<_MessageComposer> {
+
+  SocketClient socketClient = new SocketClient();
+  final TextEditingController _controller = new TextEditingController();
+  FlutterAudioRecorder _recorder;
+  bool _isRecording = false;
+  Recording _current;
+  RecordingStatus _currentStatus = RecordingStatus.Unset;
+  Timer _timerRecort;
+  String _fileName;
+
+
+  @override
+  void initState() {
+    _initRecordAudio();
+    super.initState();
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 5.0, vertical: 8.0),
+      color: Color(0xFF1F1F1F),
+      child: Row(
+        children: <Widget>[
+          SizedBox(width: 10),
+          !_isRecording ? _textBox() : _audioBox(),
+          _buttonSend(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _audioBox() { 
+
+    String duration = (_current != null) ? _current.duration.toString().substring(2, 7) : '';
+
+    return Expanded(
+      child: Row(
+        children: <Widget>[
+          Container( 
+            width: 20.0,
+            height: 20.0,
+            decoration: BoxDecoration(
+              color: Colors.red,
+              shape: BoxShape.circle
+            ),
+          ),
+          SizedBox(width: 10.0),
+          Text(duration),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _textBox() {
+
+    return Expanded(
+      child: TextField(
+        maxLines: null,
+        controller: _controller,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: InputDecoration(
+          hintText: 'Mensaje a enviar....',
+          hintStyle: TextStyle(
+            color: Colors.white54
+          ),
+          border: OutlineInputBorder(
+            borderRadius: const BorderRadius.all(
+              const Radius.circular(25.0),
+            ),
+          ),
+          filled: true,
+          fillColor: Color(0xFF121c25),
+        ),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 18.0
+        ),
+        onChanged: (value) {
+          setState(() {});
+        },
+      ),
+    );
+  }
+
+
+  Widget _buttonSend(BuildContext context) {
+
+    String text = _controller.text ?? '';
+
+    if (text.isNotEmpty) {
+      
+      return MaterialButton(
+        child: Icon(
+          Icons.send,
+          size: 25.0,
+          color: Theme.of(context).iconTheme.color,
+        ),
+        onPressed: sendMsg,
+        elevation: 2.0,
+        padding: EdgeInsets.all(15.0),
+        shape: CircleBorder(),
+        minWidth: 15.0,
+      );
+      
+    } else {
+
+      return GestureDetector(
+        onTapDown: (TapDownDetails event) {
+          _isRecording = true;
+          setState(() {});
+          _startRecordAudio();
+        },
+        onLongPressEnd: (LongPressEndDetails event) {
+          _isRecording = false;
+          setState(() {});
+          _stopRecordAudio();
+        },
+        child: MaterialButton(
+          child: Icon(
+            Icons.mic,
+            size: _isRecording ? 40.0 : 25.0,
+            color: _isRecording ? Colors.white : Theme.of(context).iconTheme.color,
+          ),
+          onPressed: ()  {},
+          padding: EdgeInsets.all(15.0),
+          shape: CircleBorder(),
+          color: _isRecording ? Colors.blueAccent  : null,
+          minWidth: 15.0,
+        ),
+      );
+    }
+  }
+
+  void sendMsg() {
+
+    String mensaje = _controller?.text;
+    print('mensaje mensaje');
+    print(mensaje);
+    // if(mensaje.isNotEmpty) socketClient.sendTextMessage(mensaje, MessageType.TEXT, '');
+    
+    _controller.clear();
+    setState(() {});
+  }
+
   void _initRecordAudio() async {
-    String customPath = '/audio_recorder_';
+    String customPath = '';
     if (await FlutterAudioRecorder.hasPermissions) {
       io.Directory appDocDirectory;
       
@@ -92,26 +243,39 @@ class __ChatBodyState extends State<_ChatBody> {
         appDocDirectory = await getExternalStorageDirectory();
       }
 
-      customPath =  appDocDirectory.path +
-                    customPath +
-                    DateTime.now().millisecondsSinceEpoch.toString();
+      _fileName =  '/audio_recorder_${DateTime.now().millisecondsSinceEpoch}';
+
+      customPath =  appDocDirectory.path + _fileName;
 
       _recorder = FlutterAudioRecorder(customPath, audioFormat: AudioFormat.WAV); // .wav .aac .m4a
       await _recorder.initialized;
     }
   }
 
+  void _updateRecording() async {
+    var current = await _recorder.current(channel: 0);
+    setState(() {
+      _current = current;
+      _currentStatus = _current.status;
+    });
+  }
+
   void _startRecordAudio() async {
 
-    _isRecording = true;
     await _recorder.start();
-    // _recording = await _recorder.current(channel: 0);
+    _updateRecording();
+
+    Duration duration = Duration(milliseconds: 50);
+    _timerRecort = Timer.periodic(duration, (Timer t) => _updateRecording());
   }
 
   void _stopRecordAudio() async {
 
-    _isRecording = false;
     var  result = await _recorder.stop();
+    _timerRecort?.cancel();
+    _current = null;
+    _initRecordAudio();
+
     print("Stop recording: ${result.path}");
     print("Stop recording: ${result.duration}");
     LocalFileSystem localFileSystem = LocalFileSystem();
@@ -124,105 +288,13 @@ class __ChatBodyState extends State<_ChatBody> {
     print(base64Image.length);
     print(base64Image);
 
-   final fromString=  await _createFileFromString(base64Image);
-   print('fromString');
-   print(fromString);
-  }
+    if (base64Image.isNotEmpty) {
+      // socketClient.sendTextMessage(base64Image, MessageType.AUDIO, _fileName);
+    }
 
-  Future<String> _createFileFromString(String encodedStr) async {
-
-    Uint8List bytes = base64.decode(encodedStr);
-
-    String customPath = '/base64_';
-    io.Directory appDocDirectory;
-      
-      if (io.Platform.isIOS) {
-        appDocDirectory = await getApplicationDocumentsDirectory();
-      } else {
-        appDocDirectory = await getExternalStorageDirectory();
-      }
-
-      customPath =  appDocDirectory.path +
-                    customPath +
-                    DateTime.now().millisecondsSinceEpoch.toString();
-
-    File file =  LocalFileSystem().file("$customPath.wav");
-    
-    await file.writeAsBytes(bytes);
-
-    return file.path;
-  }
-
-  @override
-  void dispose() {
-    socketClient.disconnect();
-    super.dispose();
-  }
-}
-
-class _MessageComposer extends StatelessWidget {
-
-  SocketClient socketClient = new SocketClient();
-  final TextEditingController _controller = new TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
-    
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 5.0, vertical: 8.0),
-      color: Color(0xFF1F1F1F),
-      child: Row(
-        children: <Widget>[
-          SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              maxLines: null,
-              controller: _controller,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                hintText: 'Mensaje a enviar....',
-                hintStyle: TextStyle(
-                  color: Colors.white54
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: const BorderRadius.all(
-                    const Radius.circular(25.0),
-                  ),
-                ),
-                filled: true,
-                fillColor: Color(0xFF121c25),
-              ),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18.0
-              ),
-            ),
-          ),
-          MaterialButton(
-            child: Icon(
-              Icons.send,
-              size: 25.0,
-              color: Theme.of(context).iconTheme.color,
-            ),
-            onPressed: sendMsg,
-            elevation: 2.0,
-            padding: EdgeInsets.all(15.0),
-            shape: CircleBorder(),
-            minWidth: 15.0,
-          ),
-        ],
-      ),
-    );
-  }
-
-  void sendMsg() {
-    String _mensaje = _controller.text;
-
-    print('mensaje mensaje');
-    print(_mensaje);
-    if(_mensaje.isNotEmpty) socketClient.sendTextMessage(_mensaje);
-    
-    _controller.clear();
+  //  final fromString =  await _createFileFromString(base64Image);
+  //  print('fromString');
+  //  print(fromString);
   }
 }
 
@@ -312,13 +384,7 @@ class _ListMessage extends StatelessWidget {
           SizedBox(height: 7.0),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 15.0),
-            child: Text(
-              msg.text,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18.0,
-              ),
-            ),
+            child: (msg.messageType == MessageType.TEXT) ? _messageText(msg.text) : _messageAudio(msg)
           ),
           SizedBox(height: 3.0),
           Row(
@@ -344,6 +410,30 @@ class _ListMessage extends StatelessWidget {
       ],
     ); 
 
+  }
+
+  Future<Widget> _messageAudio(Message msg) async {
+
+    String path = await _createFileFromString(msg.text, msg.fileName);
+
+    return Container(
+      child: FlatButton(
+        child: Icon(Icons.play_arrow),
+        onPressed: () => _playAudio(path),
+      ),
+    );
+
+  }
+
+  Widget _messageText(String text) {
+
+    return Text(
+      text,
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 18.0,
+      ),
+    );
   }
 
   void _scrollToBottom() {
@@ -399,5 +489,41 @@ class _ListMessage extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  void _playAudio(String localPath) async {
+
+    print('_localPath');
+    print(localPath);
+
+
+    AudioPlayer audioPlayer = AudioPlayer();
+    int result = await audioPlayer.play(localPath, isLocal: true);
+    
+    if (result == 1) {
+      // success
+    }
+  }
+
+  Future<String> _createFileFromString(String encodedStr, String fileName) async {
+
+    Uint8List bytes = base64.decode(encodedStr);
+
+    String customPath = '';
+    io.Directory appDocDirectory;
+      
+    if (io.Platform.isIOS) {
+      appDocDirectory = await getApplicationDocumentsDirectory();
+    } else {
+      appDocDirectory = await getExternalStorageDirectory();
+    }
+
+    customPath =  appDocDirectory.path + fileName;
+
+    File file =  LocalFileSystem().file("$customPath.wav");
+    
+    await file.writeAsBytes(bytes);
+
+    return file.path;
   }
 }

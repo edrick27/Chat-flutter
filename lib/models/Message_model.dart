@@ -8,6 +8,7 @@ class Message {
     String id;
     String text;
     String messageType;
+    String fileName;
     String createdAt;
     String updatedAt;
     User user;
@@ -15,6 +16,7 @@ class Message {
     Message({
         this.id,
         this.text,
+        this.fileName,
         this.messageType,
         this.createdAt,
         this.updatedAt,
@@ -24,6 +26,7 @@ class Message {
     factory Message.fromJson(Map<String, dynamic> json) => Message(
         id: json["id"],
         text: json["text"],
+        fileName: json["file_name"],
         messageType: json["message_type"],
         createdAt: json["created_at"],
         updatedAt: json["updated_at"],
@@ -33,6 +36,7 @@ class Message {
     Map<String, dynamic> toJson() => {
         "id": id,
         "text": text,
+        "file_name": fileName,
         "message_type": messageType,
         "created_at": createdAt,
         "updated_at": updatedAt,

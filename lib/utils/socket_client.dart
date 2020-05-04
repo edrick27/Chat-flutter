@@ -10,6 +10,7 @@ import 'package:socket_io/models/Message_model.dart';
 import 'package:socket_io/utils/events_enum.dart';
 import 'package:socket_io/models/ChatRoom_model.dart';
 import 'package:socket_io/models/ChatUser_model.dart';
+import 'package:socket_io/utils/message_type_enum.dart';
 
 typedef void OnNewMessage(dynamic data);
 
@@ -91,7 +92,7 @@ class SocketClient with ChangeNotifier {
     });
   }
 
-  void sendTextMessage(String txtMsg) {
+  void sendTextMessage(String txtMsg, String messageType, String fileName) {
 
     if (_room == null) {
       print("You needs to be in a room to send messages");
@@ -101,6 +102,8 @@ class SocketClient with ChangeNotifier {
     final message = {
       'user': { 'userId': _room.userId },
       'text': txtMsg,
+      'message_type': messageType,
+      'file_name': fileName,
       'roomId': _room.id
     };
 
