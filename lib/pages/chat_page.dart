@@ -19,6 +19,7 @@ import 'package:socket_io/models/Message_model.dart';
 import 'package:socket_io/utils/message_type_enum.dart';
 import 'package:socket_io/utils/socket_client.dart';
 import 'package:socket_io/providers/chat_provider.dart';
+import 'package:socket_io/widget/progressIndicator.dart';
 
 
 
@@ -226,7 +227,7 @@ class __MessageComposerState extends State<_MessageComposer> {
     String mensaje = _controller?.text;
     print('mensaje mensaje');
     print(mensaje);
-    // if(mensaje.isNotEmpty) socketClient.sendTextMessage(mensaje, MessageType.TEXT, '');
+    if(mensaje.isNotEmpty) socketClient.sendTextMessage(mensaje, MessageType.TEXT, '');
     
     _controller.clear();
     setState(() {});
@@ -289,7 +290,7 @@ class __MessageComposerState extends State<_MessageComposer> {
     print(base64Image);
 
     if (base64Image.isNotEmpty) {
-      // socketClient.sendTextMessage(base64Image, MessageType.AUDIO, _fileName);
+      socketClient.sendTextMessage(base64Image, MessageType.AUDIO  , _fileName);
     }
 
   //  final fromString =  await _createFileFromString(base64Image);
@@ -298,13 +299,23 @@ class __MessageComposerState extends State<_MessageComposer> {
   }
 }
 
-class _ListMessage extends StatelessWidget {
+class _ListMessage extends StatefulWidget {
   
+
+  _ListMessage();
+
+  @override
+  __ListMessageState createState() => __ListMessageState();
+}
+
+class __ListMessageState extends State<_ListMessage> {
+
   final ScrollController _scrollController = new ScrollController();
   ChatProvider _socketProvider;
   String currentUserid = '09a13a76-0776-431d-ac27-1f6ed3a6c269';
-  
-  _ListMessage();
+  Duration _audioDuration;
+  Duration _audioPosition;
+
 
   @override
   Widget build(BuildContext context) {
@@ -412,17 +423,56 @@ class _ListMessage extends StatelessWidget {
 
   }
 
-  Future<Widget> _messageAudio(Message msg) async {
+  Widget _messageAudio(Message msg) {
 
-    String path = await _createFileFromString(msg.text, msg.fileName);
+    // String path = await _createFileFromString(msg.text, msg.fileName);
 
     return Container(
-      child: FlatButton(
-        child: Icon(Icons.play_arrow),
-        onPressed: () => _playAudio(path),
+      child: Row(
+        children: <Widget>[
+          FlatButton(
+            child: Icon(Icons.play_arrow),
+            onPressed: () => _playAudio(msg),
+          ),
+           _buildProgressView()
+        ],
       ),
     );
 
+  }
+
+  double _getAudioPosition() {
+     return _audioPosition != null && _audioPosition.inMilliseconds > 0
+                ? (_audioPosition?.inMilliseconds?.toDouble() ?? 0.0) /
+                    (_audioDuration?.inMilliseconds?.toDouble() ?? 0.0)
+                : 0.0;
+  }
+
+  get positionText =>
+      _audioPosition != null ? _audioPosition.toString().split('.').first.substring(2, 7) : '0:00';
+
+  Widget _buildProgressView() {
+    
+    return Container(
+      width: 150,
+      // height: 50,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LinearProgressIndicator( 
+            value:  _getAudioPosition(),
+          ),
+          SizedBox(height: 5.0),
+          Text(
+            '$positionText',
+            style: TextStyle(
+              fontSize: 14.0,
+              color: Colors.white38
+            ),
+          )
+        ]
+      ),
+    );
   }
 
   Widget _messageText(String text) {
@@ -491,13 +541,35 @@ class _ListMessage extends StatelessWidget {
     );
   }
 
-  void _playAudio(String localPath) async {
+  void _playAudio(Message msg) async {
+
+    String localPath = await _createFileFromString(msg.text, msg.fileName);
 
     print('_localPath');
     print(localPath);
 
 
     AudioPlayer audioPlayer = AudioPlayer();
+    
+    audioPlayer.onDurationChanged.listen((Duration d) {
+      print('Max duration: $d');
+      print('Max duration: ${d.inSeconds.toDouble()}');
+      setState(() => _audioDuration = d);
+    });
+
+    audioPlayer.onAudioPositionChanged.listen((Duration p) {
+      print('Max duration: $p');
+      print('Max duration: ${p.inSeconds.toDouble()}');
+      setState(() => _audioPosition = p);
+    });
+
+    audioPlayer.onPlayerCompletion.listen((event) {
+      setState(() {
+        _audioDuration = null;
+        _audioPosition = null;
+      });
+    });
+
     int result = await audioPlayer.play(localPath, isLocal: true);
     
     if (result == 1) {
