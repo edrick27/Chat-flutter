@@ -337,9 +337,9 @@ class __ListMessageState extends State<_ListMessage> {
 
   Widget _buildChatListView() {
 
-    if (_socketProvider.mensageList == null) {
+    if (_socketProvider.mensageList.isEmpty) {
       
-      return CircularProgressIndicator();
+      return Center(child: CircularProgressIndicator());
     } 
 
     return ListView.builder(
