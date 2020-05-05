@@ -19,8 +19,6 @@ import 'package:socket_io/models/Message_model.dart';
 import 'package:socket_io/utils/message_type_enum.dart';
 import 'package:socket_io/utils/socket_client.dart';
 import 'package:socket_io/providers/chat_provider.dart';
-import 'package:socket_io/widget/progressIndicator.dart';
-
 
 
 class ChatPage extends StatelessWidget {
